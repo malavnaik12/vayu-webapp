@@ -1,0 +1,10 @@
+# Core dependencies
+gradio
+openai==1.12.0
+googlemaps==4.10.0
+
+# Map visualization
+folium==0.17.0
+
+# Utilities
+python-dotenv==1.2.1

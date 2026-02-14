@@ -231,28 +231,28 @@ if __name__ == "__main__":
         server_name="0.0.0.0",
         server_port=7860,
         # Add these:
-        theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
-        css="""
-    .gradio-container {
-        font-family: 'Inter', sans-serif;
-    }
-    #logo {
-        text-align: center;
-        font-size: 3em;
-        font-weight: 700;
-        color: #8B4513;
-        margin-bottom: 0;
-    }
-    #tagline {
-        text-align: center;
-        font-size: 1.2em;
-        color: #A0826D;
-        margin-top: 0;
-        margin-bottom: 2em;
-    }
-    #response-box {
-        font-size: 1.1em;
-        line-height: 1.6;
-    }
-    """,  # move the CSS string here
+        #     theme=gr.themes.Soft(primary_hue="orange", secondary_hue="amber"),
+        #     css="""
+        # .gradio-container {
+        #     font-family: 'Inter', sans-serif;
+        # }
+        # #logo {
+        #     text-align: center;
+        #     font-size: 3em;
+        #     font-weight: 700;
+        #     color: #8B4513;
+        #     margin-bottom: 0;
+        # }
+        # #tagline {
+        #     text-align: center;
+        #     font-size: 1.2em;
+        #     color: #A0826D;
+        #     margin-top: 0;
+        #     margin-bottom: 2em;
+        # }
+        # #response-box {
+        #     font-size: 1.1em;
+        #     line-height: 1.6;
+        # }
+        # """,  # move the CSS string here
     )

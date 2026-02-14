@@ -1,3 +1,13 @@
+---
+title: Vayu
+emoji: 🌍
+colorFrom: orange
+colorTo: amber
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+---
 # Vayu 🌍
 
 **Your Personal AI-based Tour Guide as you Drift across the World, available on the Web for you!**

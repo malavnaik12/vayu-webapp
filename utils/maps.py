@@ -41,6 +41,20 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return round(distance, 2)
 
 
+def geocode_address(address: str) -> dict:
+    """Convert address text to coordinates"""
+    result = gmaps.geocode(address)
+    # print(result)
+    if result:
+        location = result[0]["geometry"]["location"]
+        return {
+            "lat": location["lat"],
+            "lng": location["lng"],
+            "formatted_address": result[0]["formatted_address"],
+        }
+    return None
+
+
 def reverse_geocode(latitude: float, longitude: float) -> dict:
     """
     Convert coordinates to location name (neighborhood, city, country)
@@ -292,9 +306,13 @@ def get_nearby_places(
         # Sort by combination of rating and proximity
         # Places with good ratings and close proximity rank higher
         def rank_place(place):
-            rating = place.get("rating", 0)
-            distance = place.get("distance_km", 999)
-            num_ratings = place.get("user_ratings_total", 0)
+            try:
+                rating = float(place.get("rating") or 0)
+                distance = float(place.get("distance_km") or 999)
+                num_ratings = int(place.get("user_ratings_total") or 0)
+            except (ValueError, TypeError):
+                # If conversion fails, return low score
+                return -999
 
             # Weighted score: rating * rating_count_factor - distance_penalty
             rating_weight = min(num_ratings / 100, 1.0)  # Cap at 1.0
@@ -330,7 +348,13 @@ def create_map_with_markers(
     """
 
     # Create base map
-    m = folium.Map(location=[latitude, longitude], zoom_start=14, tiles="OpenStreetMap")
+    m = folium.Map(
+        location=[latitude, longitude],
+        zoom_start=14,
+        # tiles="CartoDB positron",
+        tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+        attr="Google Maps",
+    )
 
     # Add user location marker (blue)
     folium.Marker(
@@ -360,9 +384,14 @@ def create_map_with_markers(
             else:
                 color = "gray"
 
-            # Build popup HTML
+            # Generate Google Maps directions link
+            maps_link = generate_google_maps_link(
+                latitude, longitude, place["lat"], place["lng"]
+            )
+
+            # Build popup HTML with directions button
             popup_html = f"""
-            <div style="font-family: Arial; width: 200px;">
+            <div style="font-family: Arial; width: 220px;">
                 <h4 style="margin: 0 0 10px 0;">{i}. {name}</h4>
                 <p style="margin: 5px 0;">
                     <b>Rating:</b> {rating}★<br>
@@ -373,8 +402,20 @@ def create_map_with_markers(
                 status = "🟢 Open Now" if open_now else "🔴 Closed"
                 popup_html += f"<b>Status:</b> {status}<br>"
 
-            popup_html += """
+            popup_html += f"""
                 </p>
+                <a href="{maps_link}" target="_blank" style="
+                    display: block;
+                    margin-top: 10px;
+                    padding: 8px;
+                    background-color: #4285F4;
+                    color: white;
+                    text-align: center;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    font-size: 12px;
+                ">Get Directions →</a>
             </div>
             """
 
@@ -413,6 +454,26 @@ def test_google_maps_connection():
     except Exception as e:
         print(f"❌ Google Maps API connection failed: {e}")
         return False
+
+
+def generate_google_maps_link(
+    user_lat: float, user_lng: float, place_lat: float, place_lng: float
+) -> str:
+    """
+    Generate Google Maps directions URL
+
+    Args:
+        user_lat: User's latitude
+        user_lng: User's longitude
+        place_lat: Destination latitude
+        place_lng: Destination longitude
+
+    Returns:
+        str: Google Maps directions URL
+    """
+    return (
+        f"https://www.google.com/maps/dir/{user_lat},{user_lng}/{place_lat},{place_lng}"
+    )
 
 
 if __name__ == "__main__":

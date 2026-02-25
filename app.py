@@ -35,35 +35,110 @@ def process_query(
         longitude: Current longitude
 
     Returns:
-        tuple: (llm_response_text, map_html, status_message)
+        tuple: (llm_response_text, map_html, resource_log, lat_input, lng_input, location_search)
     """
 
     if not user_query or not user_query.strip():
-        return "Please enter a query.", None, "⚠️ No query provided"
-
+        yield "Please enter a query.", None, "[ERROR] No query provided", None, None, None
+        return  # "Please enter a query.", None, "⚠️ No query provided"
+    log = ""
     try:
-        # Step 1: Get location context
-        if string_location:
+        initial_map_html = create_map_with_markers(
+            latitude=latitude,
+            longitude=longitude,
+            # places=google_places,
+            center_label=f"You are here",
+        )
+        # Initial status
+        log = log_progress(log, "🚀 Starting query processing...")
+        yield None, initial_map_html, log, None, None, None
+
+        # Step 1: Extract location from query
+        log = log_progress(log, "📍 Extracting location...")
+        yield None, initial_map_html, log, None, None, None
+
+        # NEW: Try to extract location from query first
+        from utils.maps import extract_location_from_query
+
+        extracted = extract_location_from_query(user_query)
+
+        if extracted["found"]:
+            # Override coordinates with extracted location
+            lat = extracted["lat"]
+            long = extracted["lng"]
+            status = f"📍 Detected location: {extracted['location']} → {extracted['formatted_address']}"
+            log = log_progress(log, f"✅ Location found: {extracted['location']}")
+            yield None, initial_map_html, log, None, None, None
+        elif string_location:
             location_info = geocode_address(string_location)
             lat = location_info.get("lat", "Unknown Latitude")
             long = location_info.get("lng", "Unknown Longitude")
+            log = log_progress(log, f"✅ Using provided location: {string_location}")
+            yield None, initial_map_html, log, None, None, None
         else:
             lat = latitude
             long = longitude
+            status = f"📍 Using provided location: {lat}, {long}"
+            log = log_progress(
+                log, f"✅ Using provided coordinates: ({latitude}, {longitude})"
+            )
+            yield None, initial_map_html, log, None, None, None
+
+        # Step 2: Reverse geocode
+        log = log_progress(log, "🌍 Getting neighborhood info...")
+        yield None, initial_map_html, log, None, None, None
+
         location_info = reverse_geocode(lat, long)
         neighborhood = location_info.get("neighborhood", "this area")
         city = location_info.get("city", "the city")
+
+        log = log_progress(log, f"✅ Location: {neighborhood}, {city}")
+        interim_map_html = create_map_with_markers(
+            latitude=lat,
+            longitude=long,
+            # places=google_places,
+            center_label=f"You are here ({neighborhood})",
+        )
+        yield None, interim_map_html, log, None, None, None
+
+        # Step 3: Classify query
+        log = log_progress(log, "🤖 Classifying query type...")
+        yield None, interim_map_html, log, None, None, None
 
         status = f"📍 Analyzing query for {neighborhood}, {city}..."
 
         # Step 2: Classify query type
         query_type = classify_query(user_query)
+        log = log_progress(log, f"✅ Query type: {query_type}")
+        yield None, interim_map_html, log, None, None, None
 
         # Step 3: Get relevant places from Google if needed
         google_places = None
         if query_type in ["places", "itinerary"]:
+            log = log_progress(log, "🔍 Searching Google Places API...")
+            yield None, None, log, None, None, None
             status = f"🔍 Searching for places near {neighborhood}..."
-            google_places = get_nearby_places(user_query, lat, long)
+
+            if query_type == "itinerary":
+                # Use multi-stop search for itineraries
+                from utils.maps import get_places_for_itinerary
+
+                google_places = get_places_for_itinerary(
+                    user_query, latitude, longitude
+                )
+                log = log_progress(
+                    log, f"✅ Found {len(google_places)} places across categories"
+                )
+            else:
+                # Use single-type search for simple place queries
+                google_places = get_nearby_places(user_query, latitude, longitude)
+                log = log_progress(log, f"✅ Found {len(google_places)} places")
+
+            yield None, interim_map_html, log, None, None, None
+
+        # Step 5: Generate LLM response
+        log = log_progress(log, "💭 Generating AI response...")
+        yield None, interim_map_html, log, None, None, None
 
         # Step 4: Generate LLM response
         status = f"🤔 Vayu is thinking..."
@@ -75,26 +150,40 @@ def process_query(
             google_places=google_places,
             query_type=query_type,
         )
+        log = log_progress(log, "✅ AI response generated")
+        yield None, interim_map_html, log, None, None, None
 
         # Step 5: Create map with markers
+        log = log_progress(log, "🗺️ Creating interactive map...")
         map_html = create_map_with_markers(
             latitude=lat,
             longitude=long,
             places=google_places,
             center_label=f"You are here ({neighborhood})",
         )
+        log = log_progress(log, "✅ Map created successfully")
+        log = log_progress(log, "✨ Query complete!")
 
         status = f"✅ Response ready!"
 
-        return llm_response, map_html, status, lat, long
+        used_loc_info = reverse_geocode(lat, long)
+        used_neighborhood = used_loc_info.get("neighborhood", "this area")
+        used_city = used_loc_info.get("city", "the city")
+        yield llm_response, map_html, log, lat, long, used_city
+        # return llm_response, map_html, status, lat, long, used_city
 
     except Exception as e:
         error_msg = f"Error processing query: {str(e)}"
+        log = log_progress(log, f"❌ ERROR: {str(e)}")
         print(f"ERROR: {error_msg}")
-        return (
-            "Sorry, I encountered an error processing your request. Please try again.",
+        yield (
+            "Sorry, I encountered an error processing your request.",
             None,
             f"❌ {error_msg}",
+            log,
+            None,
+            None,
+            None,
         )
 
 
@@ -121,20 +210,94 @@ def update_map_location(latitude: float, longitude: float, string_location: str)
             center_label=f"📍 {label}",
         )
 
-        return map_html, f"📍 Location: {label}", lat, long
+        return map_html, lat, long
     except:
-        return None, "⚠️ Could not load location", None, None
+        return None, None, None
+
+
+def log_progress(current_log: str, new_message: str) -> str:
+    """
+    Append timestamped message to log
+
+    Args:
+        current_log: Existing log content
+        new_message: New message to append
+
+    Returns:
+        str: Updated log
+    """
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    new_line = f"[{timestamp}] {new_message}"
+
+    if current_log and current_log != "Ready to process queries...":
+        return f"{current_log}\n{new_line}"
+    else:
+        return new_line
 
 
 # Build Gradio Interface
 with gr.Blocks() as demo:  # Remove theme and css here
 
     # Header
-    gr.Markdown("<h1 id='logo'>Vayu</h1>")
-    gr.Markdown("<p id='tagline'>Your AI Travel Companion</p>")
+    gr.Markdown("<h1 id='logo.svg'>Vayu - Your AI Travel Companion</h1>")
+    with gr.Accordion("ℹ️ About Vayu", open=False):
+        gr.Markdown(
+            """
+        **Vayu** is an AI-powered travel companion that helps you discover and explore your surroundings.
+        
+        **How it works:**
+        1. Share your location (or use the default)
+        2. Ask a question about your area
+        3. Get personalized, conversational recommendations with a map
+
+        **💭 Vayu can help with...**
+        - Simple things like:
+            - Finding hidden gems in your neighborhood
+            - Sharing fun facts about your location
+        - More complex requests like:
+            - Creating a personalized itinerary for a day out
+            - Recommending places based on your mood or interests
+            - Example: I'm at the CN Tower. I need to visit a pharmacy and a high-end stationery store before meeting a friend at 'Bar Raval' at 7:00 PM. I only have 90 minutes. I am traveling by public transit. Map a route that prioritizes the pharmacy (high priority) and tell me if I have enough time to browse the stationery store for at least 20 minutes without being late.
+        
+        **Built with:**
+        - OpenAI GPT-4 for conversational AI
+        - Google Places API for real-time local data
+        - Folium for interactive maps
+        
+        **Created by:** Malav Naik, housed at https://github.com/malavnaik12/vayu-webapp/
+        """
+        )
+    with gr.Accordion("💡 Example Queries", open=False):
+        gr.Markdown(
+            """
+            Simple Queries:
+            - "What are the top 5 attractions near me?",
+            - "Best nearby spot for a bite to eat?",
+            - "I have 3 hours here, what should I do?",
+            - "Tell me about this neighborhood",
+            - "What makes this area special?",
+            - "I'm with my family, what's kid-friendly nearby?",
+            - "Best place for sunset photos around here?",
+            - "Hidden gems in this neighborhood?",
+            - "I have 2 hours and $30, best date night plan?",
+            - "Quick breakfast spot before catching a flight?",
+            - "Best viewpoint or lookout nearby?",
+
+            More Complex Queries:
+            - "I need to find a quiet cafe to work in for 2 hours near Yorkville. It must have 'reliable Wi-Fi' mentioned in reviews, be wheelchair accessible, and stay open until at least 10:00 PM. My total budget for the night is $15.
+            - "I'm at the CN Tower. I need to visit a pharmacy and a high-end stationery store before meeting a friend at 'Bar Raval' at 7:00 PM. I only have 90 minutes. I am traveling by public transit. Map a route that prioritizes the pharmacy (high priority) and tell me if I have enough time to browse the stationery store for at least 20 minutes without being late."
+            - "I need to find a quiet cafe to work in for 2 hours near Yorkville. It must have 'reliable Wi-Fi' mentioned in reviews, be wheelchair accessible, and stay open until at least 10:00 PM. My total budget for the night is $15. If no cafes within a 1km radius meet all these criteria, find the closest library that is currently open."
+            - "I want to go for a 'scenic' walk starting from St. Lawrence Market. I have 60 minutes. Find me a route that passes by at least one historic landmark and ends at a park with a view of the water. My budget is $0. Ensure the route doesn't take me more than 15 minutes away from a subway station at any point."
+            - "I have a 3-hour layover at Bloor-Yonge station. I need a place to print a 10-page document, a quiet spot to take a 30-minute Zoom call, and a place to grab a coffee. I need to be back at the station 15 minutes before my next appointment. Please sequence these stops to minimize walking distance."
+        
+        """
+        )
+    # gr.Markdown("<p id='tagline'>Your AI Travel Companion</p>")
 
     # Status indicator
-    status_text = gr.Markdown("🌍 Ready to explore!")
+    # _ = gr.Markdown("")
 
     # Main content area
     with gr.Row():
@@ -150,7 +313,7 @@ with gr.Blocks() as demo:  # Remove theme and css here
                     type="text",
                     interactive=True,
                 )
-                with gr.Row():
+                with gr.Row(visible=False):
                     lat_input = gr.Number(
                         label="Latitude",
                         value=DEFAULT_LAT,
@@ -168,72 +331,78 @@ with gr.Blocks() as demo:  # Remove theme and css here
 
             query_input = gr.Textbox(
                 label="What do you want to know?",
-                placeholder="Best nearby spot for a bite to eat?",
+                placeholder="Hidden gems in this neighborhood?",
                 lines=2,
             )
 
             submit_btn = gr.Button("🚀 Ask Vayu", variant="primary", size="lg")
 
+            # Query input
+            # gr.Markdown("### 💭 Vayu can help with things like...")
+
+            # # Example prompts
+            # example_prompts = get_example_prompts()
+            # for prompt in random.sample(example_prompts, 5):
+            #     gr.Markdown(f"- *{prompt}*")
+
             # Response output
             response_output = gr.Textbox(
-                label="Vayu's Response", lines=12, elem_id="response-box"
+                label="Vayu's Response", lines=8.5, elem_id="response-box"
             )
-
-            # Query input
-            gr.Markdown("### 💭 Vayu can help with things like...")
-
-            # Example prompts
-            example_prompts = get_example_prompts()
-            for prompt in random.sample(example_prompts, 5):
-                gr.Markdown(f"- *{prompt}*")
-
         # Right column: Map
-        with gr.Column(scale=2):
-            gr.Markdown("### 🗺️ Map View")
+        with gr.Column(scale=1):
+            # gr.Markdown("### 🗺️ Map View")
             map_output = gr.HTML(
                 value=create_map_with_markers(
                     DEFAULT_LAT, DEFAULT_LNG, None, "📍 Toronto, ON"
-                )
+                ),
+                max_height=600,
             )
 
-    # Footer
-    with gr.Accordion("ℹ️ About Vayu", open=False):
-        gr.Markdown(
-            """
-        **Vayu** is an AI-powered travel companion that helps you discover and explore your surroundings.
-        
-        **How it works:**
-        1. Share your location (or use the default)
-        2. Ask a question about your area
-        3. Get personalized, conversational recommendations with a map
-        
-        **Built with:**
-        - OpenAI GPT-4 for conversational AI
-        - Google Places API for real-time local data
-        - Folium for interactive maps
-        
-        **Created by:** Malav Naik, housed at https://github.com/malavnaik12/vayu-webapp/
-        """
-        )
+            # with gr.Accordion("🔧 Resource Log"):
+            resource_log = gr.Textbox(
+                label="🔧 Resource Log",
+                lines=5,
+                value="Ready to process queries...",
+                interactive=False,
+            )
+            clear_log_btn = gr.Button("Clear Log", size="sm")
 
     # Event handlers
     submit_btn.click(
         fn=process_query,
         inputs=[query_input, lat_input, lng_input, location_search],
-        outputs=[response_output, map_output, status_text, lat_input, lng_input],
+        outputs=[
+            response_output,
+            map_output,
+            resource_log,
+            lat_input,
+            lng_input,
+            location_search,
+        ],
     )
 
     update_location_btn.click(
         fn=update_map_location,
         inputs=[lat_input, lng_input, location_search],
-        outputs=[map_output, status_text, lat_input, lng_input],
+        outputs=[map_output, lat_input, lng_input],
     )
 
     # Also submit on Enter key
     query_input.submit(
         fn=process_query,
         inputs=[query_input, lat_input, lng_input, location_search],
-        outputs=[response_output, map_output, status_text, lat_input, lng_input],
+        outputs=[
+            response_output,
+            map_output,
+            resource_log,
+            lat_input,
+            lng_input,
+            location_search,
+        ],
+    )
+    clear_log_btn.click(
+        fn=lambda: "Ready to process queries...", outputs=[resource_log]
     )
 
 # Launch

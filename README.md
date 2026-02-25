@@ -10,6 +10,11 @@ app_file: app.py
 pinned: false
 ---
 # Vayu 🌍
+<p align="center">
+  <a href="https://huggingface.co/spaces/malavnaik12/vayu">
+    <img src="logo.svg" width="220">
+  </a>
+</p>
 
 **Your Personal AI-based Tour Guide as you Drift across the World, available on the Web for you!**
 
@@ -23,6 +28,10 @@ What started as a weekend project became a full-featured AI travel companion tha
 - Conversational AI (understanding context, preferences, constraints)
 - Real-time local data (places, ratings, hours, distances)
 - Interactive maps (visual exploration and route planning)
+
+### Why Vayu?
+
+**Vayu** (वायु) is Hindu God of the Winds - the breath of life that connects all things. Just as wind carries stories across distances, Vayu is here to help you discover the stories of the places you visit.
 
 ## Features
 
@@ -47,99 +56,12 @@ What started as a weekend project became a full-featured AI travel companion tha
 - **Visualization**: Folium (interactive maps)
 - **Deployment**: Hugging Face Spaces
 
-## Setup
-
-### Prerequisites
-
-- Python 3.9+
-- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
-- Google Maps API key ([Get one here](https://console.cloud.google.com/google/maps-apis/))
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/vayu.git
-cd vayu
-```
-
-2. **Create virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-4. **Set up environment variables**
-```bash
-cp .env.example .env
-# Edit .env and add your API keys
-```
-
-5. **Run locally**
-```bash
-python app.py
-```
-
-Visit `http://localhost:7860` in your browser.
-
-## Google Maps API Setup
-
-You need to enable these APIs in Google Cloud Console:
-1. **Maps JavaScript API**
-2. **Places API** 
-3. **Geocoding API**
-
-[Detailed setup guide](https://developers.google.com/maps/documentation/javascript/get-api-key)
-
-## Deployment to Hugging Face Spaces
-
-1. **Create a new Space** at [huggingface.co/spaces](https://huggingface.co/spaces)
-   - Choose: Gradio as SDK
-   - Choose: Public or Private
-
-2. **Add your code**
-```bash
-git remote add hf https://huggingface.co/spaces/YOUR_USERNAME/vayu
-git push hf main
-```
-
-3. **Add secrets** in Space settings:
-   - `OPENAI_API_KEY`
-   - `GOOGLE_MAPS_API_KEY`
-
-4. **Your app will be live** at `https://huggingface.co/spaces/YOUR_USERNAME/vayu`
-
-## Usage Examples
-
-```python
-# Example queries to try:
-
-"Best pizza near me"
-→ Get top-rated pizza places with ratings, prices, and distances
-
-"I have 3 hours before my flight, what should I do?"
-→ Get a time-optimized itinerary with specific places and timing
-
-"Tell me about this neighborhood"
-→ Learn history, culture, and local character
-
-"I'm with my elderly parents, easy walking routes?"
-→ Get accessible, senior-friendly recommendations
-
-"Hidden gems around here?"
-→ Discover local favorites beyond tourist spots
-```
-
 ## Project Structure
 
 ```
-vayu/
+vayu-webapp/
 ├── app.py                 # Main Gradio application
+├── logo.png               # Vayu App logo file
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
 ├── utils/
@@ -168,15 +90,13 @@ vayu/
 - [x] Query classification (places/itinerary/factual)
 - [x] Gradio web UI
 - [ ] Mobile app (Flutter) - in progress
+   - [Frontend](https://github.com/malavnaik12/vayu-frontend)
+   - [Backend](https://github.com/malavnaik12/vayu-backend)
 - [ ] Voice input (speech-to-text)
 - [ ] Voice output (text-to-speech)
 - [ ] Chat history persistence
 - [ ] Multi-language support
-- [ ] Offline mode with cached data
-
-## Why Vayu?
-
-**Vayu** (वायु) is the Sanskrit word for "wind" or "air" - the breath of life that connects all things. Just as wind carries stories across distances, Vayu helps you discover the stories of the places you visit.
+- [ ] Offline mode with cached data and on-device LLM
 
 ## Contributing
 

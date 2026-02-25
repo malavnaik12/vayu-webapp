@@ -20,28 +20,33 @@ MAX_TOKENS = 1000
 def classify_query(user_query: str) -> str:
     """
     Classify query into type: 'places', 'itinerary', or 'factual'
-
-    Args:
-        user_query: User's question
-
-    Returns:
-        str: Query type ('places', 'itinerary', or 'factual')
     """
 
     classification_prompt = f"""
     Classify this travel query into ONE category:
-    - "places" if asking for specific locations (restaurants, attractions, shops, etc.)
-    - "itinerary" if asking for multi-step plans or time-based activities
-    - "factual" if asking for information, history, or general knowledge
+    
+    - "itinerary" if:
+      * Mentions multiple stops/destinations (restaurant AND bookstore)
+      * Mentions time constraints with route planning
+      * Asks for "route" or "plan" with multiple activities
+      * Contains "then" or "and then" or "after that"
+    
+    - "places" if asking for:
+      * Single type of location (restaurants, coffee shops, etc.)
+      * Recommendations for one activity
+    
+    - "factual" if asking for:
+      * Information, history, or general knowledge
+      * No specific place recommendations needed
     
     Query: "{user_query}"
     
-    Respond with ONLY the category name (places/itinerary/factual).
+    Respond with ONLY one word: itinerary, places, or factual
     """
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Use mini for classification (cheaper/faster)
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -55,16 +60,13 @@ def classify_query(user_query: str) -> str:
 
         classification = response.choices[0].message.content.strip().lower()
 
-        # Validate classification
         if classification in ["places", "itinerary", "factual"]:
             return classification
         else:
-            # Default to 'places' if unclear
             return "places"
 
     except Exception as e:
         print(f"Classification error: {e}")
-        # Default to 'places' on error
         return "places"
 
 
@@ -159,13 +161,31 @@ IMPORTANT: Use this real-time data in your response. Mention specific place name
 """
     elif query_type == "itinerary":
         system_prompt += """
-**Response Guidelines:**
-- Create a time-based itinerary with specific places and timing
-- Consider travel time between locations
-- Be realistic about what can fit in the timeframe
-- Number the steps clearly (1, 2, 3...)
-- Keep response under 250 words
-"""
+    **Response Guidelines:**
+    - Create a realistic, time-based itinerary with specific places
+    - Account for walking time between stops (assume 10 min per km)
+    - CRITICAL: Check price levels and time constraints from user's query
+    - Number each stop clearly (Stop 1, Stop 2, etc.)
+    - Include estimated time at each location and travel time
+    - Be specific about which places to visit (use their actual names from the data)
+    - End with total time and budget summary
+    - Keep response under 300 words
+    - Format as clear, sequential steps
+
+    Example format:
+    "Here's your 75-minute route:
+
+    Stop 1 - [Restaurant Name] (15 mins)
+    Get [specific meal recommendation]. Budget: $15-20.
+    Walking time to next stop: 5 mins
+
+    Stop 2 - [Bookstore Name] (20 mins)  
+    Browse [genre] section. Budget: $10.
+    Walking time back: 10 mins
+
+    Total: 50 minutes active + 15 mins walking = 65 mins (10 min buffer)
+    Total cost: ~$25-30"
+    """
     else:  # factual
         system_prompt += """
 **Response Guidelines:**

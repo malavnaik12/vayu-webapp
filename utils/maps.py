@@ -41,6 +41,182 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return round(distance, 2)
 
 
+def extract_location_from_query(query: str) -> dict:
+    """
+    Extract location mentions from query and geocode them
+
+    Args:
+        query: User's natural language query
+
+    Returns:
+        dict: {
+            'found': bool,
+            'location': str (extracted location text),
+            'lat': float,
+            'lng': float,
+            'formatted_address': str
+        }
+    """
+
+    if not gmaps:
+        return {"found": False}
+
+    query_lower = query.lower()
+
+    # Common location indicators
+    location_patterns = [
+        r"at ([\w\s,]+?)(?:\.|,|\s+i\s|\s+and\s|$)",  # "at Union Station"
+        r"in ([\w\s,]+?)(?:\.|,|\s+i\s|\s+and\s|$)",  # "in Toronto"
+        r"near ([\w\s,]+?)(?:\.|,|\s+i\s|\s+and\s|$)",  # "near CN Tower"
+        r"from ([\w\s,]+?)(?:\.|,|\s+i\s|\s+and\s|$)",  # "from Union Station"
+    ]
+
+    import re
+
+    potential_locations = []
+
+    for pattern in location_patterns:
+        matches = re.finditer(pattern, query, re.IGNORECASE)
+        for match in matches:
+            location_text = match.group(1).strip()
+            # Filter out common non-location words
+            if (
+                location_text
+                and len(location_text) > 3
+                and not location_text.lower()
+                in ["here", "there", "this", "that", "the", "a"]
+            ):
+                potential_locations.append(location_text)
+
+    # Try geocoding each potential location
+    for location_text in potential_locations:
+        try:
+            result = gmaps.geocode(location_text)
+            if result:
+                loc = result[0]["geometry"]["location"]
+                return {
+                    "found": True,
+                    "location": location_text,
+                    "lat": loc["lat"],
+                    "lng": loc["lng"],
+                    "formatted_address": result[0]["formatted_address"],
+                }
+        except:
+            continue
+
+    return {"found": False}
+
+
+def get_places_for_itinerary(query: str, latitude: float, longitude: float) -> list:
+    """
+    For itinerary queries with multiple stops, extract and search for each type
+
+    Args:
+        query: User's full itinerary request
+        latitude: Starting latitude
+        longitude: Starting longitude
+
+    Returns:
+        list: Combined results from multiple searches
+    """
+
+    if not gmaps:
+        return []
+
+    # Common multi-stop patterns
+    food_keywords = [
+        "meal",
+        "eat",
+        "food",
+        "restaurant",
+        "lunch",
+        "dinner",
+        "breakfast",
+        "hungry",
+    ]
+    book_keywords = ["book", "bookstore", "bookshop", "read"]
+    coffee_keywords = ["coffee", "cafe"]
+
+    query_lower = query.lower()
+
+    # Determine what types of places to search for
+    searches = []
+
+    if any(keyword in query_lower for keyword in food_keywords):
+        searches.append(("restaurant", "restaurant"))
+
+    if any(keyword in query_lower for keyword in book_keywords):
+        searches.append(("book_store", "bookstore"))
+
+    if any(keyword in query_lower for keyword in coffee_keywords):
+        searches.append(("cafe", "coffee"))
+
+    # If no specific types detected, fall back to general search
+    if not searches:
+        return get_nearby_places(query, latitude, longitude)
+
+    # Search for each type
+    all_places = []
+    seen_ids = set()
+
+    for place_type, keyword in searches:
+        try:
+            places_result = gmaps.places_nearby(
+                location=(latitude, longitude),
+                radius=800,  # 800m = ~10 min walk
+                type=place_type,
+                keyword=keyword,
+            )
+
+            if places_result.get("results"):
+                for place in places_result["results"][:3]:  # Top 3 per category
+                    place_id = place.get("place_id")
+                    if place_id not in seen_ids:
+                        seen_ids.add(place_id)
+
+                        place_lat = place["geometry"]["location"]["lat"]
+                        place_lng = place["geometry"]["location"]["lng"]
+                        distance_km = haversine_distance(
+                            latitude, longitude, place_lat, place_lng
+                        )
+
+                        enhanced_place = {
+                            "name": place.get("name"),
+                            "rating": place.get("rating"),
+                            "user_ratings_total": place.get("user_ratings_total", 0),
+                            "price_level": place.get("price_level"),
+                            "vicinity": place.get("vicinity"),
+                            "types": place.get("types", []),
+                            "lat": place_lat,
+                            "lng": place_lng,
+                            "distance_km": distance_km,
+                            "place_id": place_id,
+                            "category": place_type,  # Add category tag
+                        }
+
+                        if "opening_hours" in place:
+                            enhanced_place["open_now"] = place["opening_hours"].get(
+                                "open_now", False
+                            )
+                        else:
+                            enhanced_place["open_now"] = None
+
+                        all_places.append(enhanced_place)
+
+        except Exception as e:
+            print(f"Error searching for {place_type}: {e}")
+            continue
+
+    # Sort by combination of rating and distance
+    all_places.sort(
+        key=lambda p: (p.get("rating", 0) or 0) * 2
+        - (p.get("distance_km", 999) or 999),
+        reverse=True,
+    )
+
+    return all_places
+
+
 def geocode_address(address: str) -> dict:
     """Convert address text to coordinates"""
     result = gmaps.geocode(address)

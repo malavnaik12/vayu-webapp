@@ -540,17 +540,20 @@ def create_map_with_markers(
         icon=folium.Icon(color="blue", icon="user", prefix="fa"),
     ).add_to(m)
 
-    # Add place markers (red/green based on rating)
+    # Add place markers (red/green/blue based on type)
     if places:
-        for i, place in enumerate(places[:5], 1):  # Top 5 on map
+        for i, place in enumerate(places, 1):
 
             name = place.get("name", "Unknown")
-            rating = place.get("rating", "N/A")
+            rating = place.get("rating")
             distance = place.get("distance_km", "N/A")
             open_now = place.get("open_now")
+            formatted_address = place.get(
+                "formatted_address", place.get("vicinity", "")
+            )
 
-            # Choose marker color based on rating
-            if isinstance(rating, (int, float)):
+            # Choose marker color based on rating or type
+            if rating and isinstance(rating, (int, float)):
                 if rating >= 4.5:
                     color = "green"
                 elif rating >= 4.0:
@@ -558,21 +561,39 @@ def create_map_with_markers(
                 else:
                     color = "red"
             else:
-                color = "gray"
+                # No rating (itinerary stop) - use different colors per stop
+                colors = ["blue", "purple", "darkblue", "cadetblue", "darkgreen"]
+                color = colors[(i - 1) % len(colors)]
 
-            # Generate Google Maps directions link
+            # Get coordinates
+            place_lat = place.get("lat")
+            place_lng = place.get("lng")
+
+            # Skip if no coordinates
+            if not place_lat or not place_lng:
+                print(f"Skipping {name} - no coordinates")
+                continue
+
+            # Generate directions link
             maps_link = generate_google_maps_link(
-                latitude, longitude, place["lat"], place["lng"]
+                latitude, longitude, place_lat, place_lng
             )
 
-            # Build popup HTML with directions button
+            # Build popup HTML
             popup_html = f"""
-            <div style="font-family: Arial; width: 220px;">
-                <h4 style="margin: 0 0 10px 0;">{i}. {name}</h4>
-                <p style="margin: 5px 0;">
-                    <b>Rating:</b> {rating}★<br>
-                    <b>Distance:</b> {distance} km<br>
+            <div style="font-family: Arial; width: 240px;">
+                <h4 style="margin: 0 0 10px 0; color: #8B6F47;">Stop {i}: {name}</h4>
+                <p style="margin: 5px 0; font-size: 0.9em;">
             """
+
+            if formatted_address:
+                popup_html += f"<b>Address:</b> {formatted_address}<br>"
+
+            if rating:
+                popup_html += f"<b>Rating:</b> {rating}★<br>"
+
+            if distance != "N/A":
+                popup_html += f"<b>Distance:</b> {distance} km<br>"
 
             if open_now is not None:
                 status = "🟢 Open Now" if open_now else "🔴 Closed"
@@ -584,7 +605,7 @@ def create_map_with_markers(
                     display: block;
                     margin-top: 10px;
                     padding: 8px;
-                    background-color: #4285F4;
+                    background-color: #8B6F47;
                     color: white;
                     text-align: center;
                     text-decoration: none;
@@ -595,12 +616,40 @@ def create_map_with_markers(
             </div>
             """
 
+            # Add marker
             folium.Marker(
-                location=[place["lat"], place["lng"]],
-                popup=folium.Popup(popup_html, max_width=250),
-                tooltip=f"{i}. {name} ({rating}★)",
-                icon=folium.Icon(color=color, icon="info-sign", prefix="glyphicon"),
+                location=[place_lat, place_lng],
+                popup=folium.Popup(popup_html, max_width=260),
+                tooltip=f"Stop {i}: {name}",
+                icon=folium.Icon(
+                    color=color,
+                    icon="info-sign",
+                    prefix="glyphicon",
+                    icon_color="white",
+                ),
             ).add_to(m)
+
+            # Add route line between stops for itineraries
+            if places and len(places) > 1:
+                route_points = [[latitude, longitude]]  # Start at user location
+
+                # Add all stop coordinates
+                for place in places:
+                    place_lat = place.get("lat")
+                    place_lng = place.get("lng")
+                    if place_lat and place_lng:
+                        route_points.append([place_lat, place_lng])
+
+                # Only draw if we have at least 2 points
+                if len(route_points) >= 2:
+                    folium.PolyLine(
+                        locations=route_points,
+                        color="#8B6F47",
+                        weight=4,
+                        opacity=0.8,
+                        popup="Route",
+                        tooltip="Suggested route",
+                    ).add_to(m)
 
     # Add fullscreen button
     plugins.Fullscreen().add_to(m)

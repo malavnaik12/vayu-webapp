@@ -99,7 +99,7 @@ def process_query(
             # places=google_places,
             center_label=f"You are here ({neighborhood})",
         )
-        yield None, interim_map_html, log, None, None, None
+        yield None, initial_map_html, log, None, None, None
 
         # Step 3: Classify query
         log = log_progress(log, "🤖 Classifying query type...")
@@ -116,7 +116,7 @@ def process_query(
         google_places = None
         if query_type in ["places", "itinerary"]:
             log = log_progress(log, "🔍 Searching Google Places API...")
-            yield None, None, log, None, None, None
+            yield None, interim_map_html, log, None, None, None
             status = f"🔍 Searching for places near {neighborhood}..."
 
             if query_type == "itinerary":
@@ -142,7 +142,7 @@ def process_query(
 
         # Step 4: Generate LLM response
         status = f"🤔 Vayu is thinking..."
-        llm_response = get_vayu_response(
+        llm_response, extracted_places = get_vayu_response(  # Now returns tuple
             user_query=user_query,
             latitude=lat,
             longitude=long,
@@ -153,12 +153,28 @@ def process_query(
         log = log_progress(log, "✅ AI response generated")
         yield None, interim_map_html, log, None, None, None
 
+        # NEW: Decide which places to show on map
+        if query_type == "itinerary" and extracted_places:
+            # For itineraries, show the places the LLM actually recommended
+            places_to_map = extracted_places
+            log = log_progress(
+                log, f"🗺️ Mapping {len(extracted_places)} itinerary stops"
+            )
+        elif google_places:
+            # For simple place queries, show Google Places results
+            places_to_map = google_places
+            log = log_progress(log, f"🗺️ Mapping {len(google_places)} recommendations")
+        else:
+            places_to_map = None
+        yield None, interim_map_html, log, None, None, None
+
         # Step 5: Create map with markers
+        # Step 6: Create map
         log = log_progress(log, "🗺️ Creating interactive map...")
         map_html = create_map_with_markers(
             latitude=lat,
             longitude=long,
-            places=google_places,
+            places=places_to_map,  # Use the right places
             center_label=f"You are here ({neighborhood})",
         )
         log = log_progress(log, "✅ Map created successfully")
@@ -248,18 +264,19 @@ with gr.Blocks() as demo:  # Remove theme and css here
         **Vayu** is an AI-powered travel companion that helps you discover and explore your surroundings.
         
         **How it works:**
-        1. Share your location (or use the default)
+        1. Share a location (or use the default)
         2. Ask a question about your area
         3. Get personalized, conversational recommendations with a map
 
         **💭 Vayu can help with...**
         - Simple things like:
-            - Finding hidden gems in your neighborhood
-            - Sharing fun facts about your location
+            - What makes this area special?
+            - I'm with my family, what's kid-friendly nearby?
         - More complex requests like:
             - Creating a personalized itinerary for a day out
             - Recommending places based on your mood or interests
             - Example: I'm at the CN Tower. I need to visit a pharmacy and a high-end stationery store before meeting a friend at 'Bar Raval' at 7:00 PM. I only have 90 minutes. I am traveling by public transit. Map a route that prioritizes the pharmacy (high priority) and tell me if I have enough time to browse the stationery store for at least 20 minutes without being late.
+        - There are more example queries in the dropdown at the bottom of this page!
         
         **Built with:**
         - OpenAI GPT-4 for conversational AI
@@ -269,31 +286,7 @@ with gr.Blocks() as demo:  # Remove theme and css here
         **Created by:** Malav Naik, housed at https://github.com/malavnaik12/vayu-webapp/
         """
         )
-    with gr.Accordion("💡 Example Queries", open=False):
-        gr.Markdown(
-            """
-            Simple Queries:
-            - "What are the top 5 attractions near me?",
-            - "Best nearby spot for a bite to eat?",
-            - "I have 3 hours here, what should I do?",
-            - "Tell me about this neighborhood",
-            - "What makes this area special?",
-            - "I'm with my family, what's kid-friendly nearby?",
-            - "Best place for sunset photos around here?",
-            - "Hidden gems in this neighborhood?",
-            - "I have 2 hours and $30, best date night plan?",
-            - "Quick breakfast spot before catching a flight?",
-            - "Best viewpoint or lookout nearby?",
 
-            More Complex Queries:
-            - "I need to find a quiet cafe to work in for 2 hours near Yorkville. It must have 'reliable Wi-Fi' mentioned in reviews, be wheelchair accessible, and stay open until at least 10:00 PM. My total budget for the night is $15.
-            - "I'm at the CN Tower. I need to visit a pharmacy and a high-end stationery store before meeting a friend at 'Bar Raval' at 7:00 PM. I only have 90 minutes. I am traveling by public transit. Map a route that prioritizes the pharmacy (high priority) and tell me if I have enough time to browse the stationery store for at least 20 minutes without being late."
-            - "I need to find a quiet cafe to work in for 2 hours near Yorkville. It must have 'reliable Wi-Fi' mentioned in reviews, be wheelchair accessible, and stay open until at least 10:00 PM. My total budget for the night is $15. If no cafes within a 1km radius meet all these criteria, find the closest library that is currently open."
-            - "I want to go for a 'scenic' walk starting from St. Lawrence Market. I have 60 minutes. Find me a route that passes by at least one historic landmark and ends at a park with a view of the water. My budget is $0. Ensure the route doesn't take me more than 15 minutes away from a subway station at any point."
-            - "I have a 3-hour layover at Bloor-Yonge station. I need a place to print a 10-page document, a quiet spot to take a 30-minute Zoom call, and a place to grab a coffee. I need to be back at the station 15 minutes before my next appointment. Please sequence these stops to minimize walking distance."
-        
-        """
-        )
     # gr.Markdown("<p id='tagline'>Your AI Travel Companion</p>")
 
     # Status indicator
@@ -331,24 +324,20 @@ with gr.Blocks() as demo:  # Remove theme and css here
 
             query_input = gr.Textbox(
                 label="What do you want to know?",
-                placeholder="Hidden gems in this neighborhood?",
+                placeholder="What makes this area special?",
                 lines=2,
             )
 
             submit_btn = gr.Button("🚀 Ask Vayu", variant="primary", size="lg")
 
-            # Query input
-            # gr.Markdown("### 💭 Vayu can help with things like...")
-
-            # # Example prompts
-            # example_prompts = get_example_prompts()
-            # for prompt in random.sample(example_prompts, 5):
-            #     gr.Markdown(f"- *{prompt}*")
-
             # Response output
-            response_output = gr.Textbox(
-                label="Vayu's Response", lines=8.5, elem_id="response-box"
-            )
+            with gr.Accordion("Vayu's Response", open=True):
+                response_output = gr.Markdown(
+                    container=True,
+                    label="",
+                    min_height=230,
+                    # lines=10.5,
+                )
         # Right column: Map
         with gr.Column(scale=1):
             # gr.Markdown("### 🗺️ Map View")
@@ -367,7 +356,29 @@ with gr.Blocks() as demo:  # Remove theme and css here
                 interactive=False,
             )
             clear_log_btn = gr.Button("Clear Log", size="sm")
+    with gr.Accordion("💡 Example Queries", open=False):
+        gr.Markdown(
+            """
+            Simple Queries:
+            - What are the top 5 attractions near me?
+            - Best nearby spot for a bite to eat?
+            - I have 3 hours here, what should I do?
+            - Tell me about this neighborhood
+            - What makes this area special?
+            - I'm with my family, what's kid-friendly nearby?
+            - Best place for sunset photos around here?
+            - I have 2 hours and $30, best date night plan?
+            - Quick breakfast spot before catching a flight?
+            - Best viewpoint or lookout nearby?
 
+            More Complex Queries:
+            - I need to find a quiet cafe to work in for 2 hours near Nathan Phillips Square. It must have 'reliable Wi-Fi' mentioned in reviews, be wheelchair accessible, and stay open until at least 10:00 PM. My total budget for the night is $15.
+            - I'm at the CN Tower. I need to visit a pharmacy and a high-end stationery store before meeting a friend at 'Bar Raval' at 7:00 PM. I only have 90 minutes. I am traveling by public transit. Map a route that prioritizes the pharmacy (high priority) and tell me if I have enough time to browse the stationery store for at least 20 minutes without being late.
+            - I need to find a quiet cafe to work in for 2 hours near Yorkville. It must have 'reliable Wi-Fi' mentioned in reviews, be wheelchair accessible, and stay open until at least 10:00 PM. My total budget for the night is $15. If no cafes within a 1km radius meet all these criteria, find the closest library that is currently open.
+            - I want to go for a 'scenic' walk starting from St. Lawrence Market. I have 60 minutes. Find me a route that passes by at least one historic landmark and ends at a park with a view of the water. My budget is $0. Ensure the route doesn't take me more than 15 minutes away from a subway station at any point.
+            - I have a 3-hour layover at Bloor-Yonge station. I need a place to print a 10-page document, a quiet spot to take a 30-minute Zoom call, and a place to grab a coffee. I need to be back at the station 15 minutes before my next appointment. Please sequence these stops to minimize walking distance.
+        """
+        )
     # Event handlers
     submit_btn.click(
         fn=process_query,

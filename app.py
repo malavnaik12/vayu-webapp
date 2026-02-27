@@ -261,36 +261,28 @@ with gr.Blocks() as demo:  # Remove theme and css here
     with gr.Accordion("ℹ️ About Vayu", open=False):
         gr.Markdown(
             """
-        **Vayu** is an AI-powered travel companion that helps you discover and explore your surroundings.
-        
-        **How it works:**
-        1. Share a location (or use the default)
-        2. Ask a question about your area
-        3. Get personalized, conversational recommendations with a map
+        Ever arrive somewhere new and wonder "What's this area even called?" or "Where should I eat?" 
 
-        **💭 Vayu can help with...**
-        - Simple things like:
-            - What makes this area special?
-            - I'm with my family, what's kid-friendly nearby?
-        - More complex requests like:
-            - Creating a personalized itinerary for a day out
-            - Recommending places based on your mood or interests
-            - Example: I'm at the CN Tower. I need to visit a pharmacy and a high-end stationery store before meeting a friend at 'Bar Raval' at 7:00 PM. I only have 90 minutes. I am traveling by public transit. Map a route that prioritizes the pharmacy (high priority) and tell me if I have enough time to browse the stationery store for at least 20 minutes without being late.
-        - There are more example queries in the dropdown at the bottom of this page!
+        I built Vayu after getting lost in a Toronto neighborhood with my fiancé. We wanted to know about the area we were driving through, but piecing together info from Google Maps, Wikipedia, and reviews felt impossible while navigating traffic.
+
+        Now you can just ask: "What's this neighborhood known for?" or "I want some quick tacos nearby, where should I go?" — and get real recommendations with a map to match.
+
+        No more juggling between Google Maps, Reviews, ChatGPT, and other apps. 
+        
+        Just ask Vayu.
         
         **Built with:**
         - OpenAI GPT-4 for conversational AI
         - Google Places API for real-time local data
         - Folium for interactive maps
         
-        **Created by:** Malav Naik, housed at https://github.com/malavnaik12/vayu-webapp/
+        **Inspired by:** My Wife
+
+        **Created by:** [Malav Naik](https://www.linkedin.com/in/malavnaik/)
+        
+        **Code Lives at:** https://github.com/malavnaik12/vayu-webapp/
         """
         )
-
-    # gr.Markdown("<p id='tagline'>Your AI Travel Companion</p>")
-
-    # Status indicator
-    # _ = gr.Markdown("")
 
     # Main content area
     with gr.Row():
@@ -356,7 +348,7 @@ with gr.Blocks() as demo:  # Remove theme and css here
                 interactive=False,
             )
             clear_log_btn = gr.Button("Clear Log", size="sm")
-    with gr.Accordion("💡 Example Queries", open=False):
+    with gr.Accordion("💭 Vayu can help you with...", open=False):
         gr.Markdown(
             """
             Simple Queries:

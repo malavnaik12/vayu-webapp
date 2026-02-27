@@ -31,7 +31,7 @@ What started as a weekend project became a full-featured AI travel companion tha
 
 ### Why Vayu?
 
-**Vayu** (वायु) is Hindu God of the Winds - the breath of life that connects all things. Just as wind carries stories across distances, Vayu is here to help you discover the stories of the places you visit.
+**Vayu** (वायु) is the Hindu God of the Winds - the breath of life that connects all things. Just as wind carries stories across distances, Vayu is here to help you discover the stories of the places you visit.
 
 ## Features
 

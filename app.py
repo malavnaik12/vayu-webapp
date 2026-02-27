@@ -269,7 +269,9 @@ with gr.Blocks() as demo:  # Remove theme and css here
 
         No more juggling between Google Maps, Reviews, ChatGPT, and other apps. 
         
-        Just ask Vayu.
+        Just ask Vayu. 
+
+        **Vayu** (वायु) is the Hindu God of the Winds. Just as wind carries stories across distances, Vayu is here to help you discover the stories of the places you visit.
         
         **Built with:**
         - OpenAI GPT-4 for conversational AI

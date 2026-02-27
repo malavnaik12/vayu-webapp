@@ -217,7 +217,7 @@ Applied ML Engineer | Toronto, Canada
 - Maps from [Google Maps Platform](https://developers.google.com/maps)
 - Visualizations with [Folium](https://python-visualization.github.io/folium/)
 - Deployed on [Hugging Face Spaces](https://huggingface.co/spaces)
-- Inspired by a simple question from my fiancée ❤️
+- Inspired by a simple question from my wife ❤️
 
 ---
 

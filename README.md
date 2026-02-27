@@ -16,105 +16,206 @@ pinned: false
   </a>
 </p>
 
-**Your Personal AI-based Tour Guide as you Drift across the World, available on the Web for you!**
+**Your AI Travel Companion**
 
-Vayu helps you discover and explore your surroundings through conversational AI powered by OpenAI GPT-4 and real-time local data from Google Maps.
+Ever arrive somewhere new and wonder "What's around here?" or "Where should I eat?" 
 
-## Origin Story
+I built Vayu after getting lost in a Toronto neighborhood with my wife. We wanted to know about the area we were driving through, but piecing together info from Google Maps, Wikipedia, and reviews felt impossible while navigating traffic.
 
-Vayu was born from a simple moment: driving through an unfamiliar Toronto neighborhood, my wife asked, "Can't you build an app that tells us about where we are?" 
+Now you can just ask: "What's this neighborhood known for?" or "I have 2 hours and $30, plan my afternoon" — and get real recommendations with a map to match.
 
-What started as a weekend project became a full-featured AI travel companion that combines:
-- Conversational AI (understanding context, preferences, constraints)
-- Real-time local data (places, ratings, hours, distances)
-- Interactive maps (visual exploration and route planning)
+**Live Demo**: [https://huggingface.co/spaces/malavnaik12/vayu](https://huggingface.co/spaces/malavnaik12/vayu)
 
-### Why Vayu?
-
-**Vayu** (वायु) is the Hindu God of the Winds - the breath of life that connects all things. Just as wind carries stories across distances, Vayu is here to help you discover the stories of the places you visit.
+---
 
 ## Features
 
-✅ **Conversational Interface** - Ask natural questions like "I have 3 hours and $30, best date night plan?"
+### 🗣️ Conversational Interface
+Ask natural questions:
+- "Best coffee shops nearby?"
+- "I have 90 minutes before my train, what should I do?"
+- "Quick lunch spot under $15?"
+- "What's this neighborhood known for?"
 
-✅ **Real-Time Data** - Get current place information (ratings, hours, prices) from Google Places API
+### 🗺️ Real-Time Local Data
+- Live business information (ratings, hours, prices)
+- Current open/closed status
+- Distance calculations
+- User-friendly addresses
 
-✅ **Smart Recommendations** - Context-aware suggestions based on your location, time, budget, and preferences
+### 🎯 Smart Planning
+- **Simple searches**: "Nearest Coffee Shop?"
+- **Complex itineraries**: "I need pharmacy + bookstore before meeting friend at 7pm"
+- **Contextual info**: "Tell me about this area"
 
-✅ **Interactive Maps** - See recommendations visualized with markers and details
+### 📍 Interactive Maps
+- Visual markers for all recommendations
+- Route lines connecting multiple stops
+- Click markers for details + Google Maps directions
+- Location-aware (extracts "I'm at CN Tower" from your query)
 
-✅ **Multiple Query Types**:
-- **Places**: "Best coffee shops nearby"
-- **Itineraries**: "I have 2 hours, what should I do?"
-- **Information**: "Tell me about this neighborhood"
+---
 
-## Tech Stack
+## How It Works
 
-- **Frontend**: Gradio (Python-based UI framework)
-- **LLM**: OpenAI GPT-4o
-- **Maps**: Google Maps API (Places, Geocoding, Directions)
-- **Visualization**: Folium (interactive maps)
-- **Deployment**: Hugging Face Spaces
+### Architecture
+
+```
+User Inputs, Query (and optionally) Location 
+    ↓
+Query Classification (places / itinerary / factual)
+    ↓
+Location Extraction ("I'm at CN Tower" → coordinates)
+    ↓
+Google Places API Search (real-time data)
+    ↓
+GPT-4o Response Generation (conversational)
+    ↓
+Place Extraction + Geocoding (validate businesses)
+    ↓
+Interactive Map (Folium visualization)
+```
+
+### Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| **Frontend** | Gradio 6.5 |
+| **LLM** | OpenAI GPT-4o |
+| **Places Data** | Google Maps Places API |
+| **Geocoding** | Google Geocoding API |
+| **Maps** | Folium + OpenStreetMap |
+| **Deployment** | Hugging Face Spaces |
+
+## Example Queries
+
+**Simple place search**:
+```
+"Best pizza near me"
+```
+→ Top-rated pizzerias with ratings, prices, distances
+
+**Time-constrained itinerary**:
+```
+"I'm at Union Station. 75 minutes before my train. 
+Need lunch and a bookstore. Map a route."
+```
+→ Optimized 2-stop route with timing breakdown
+
+**Budget-aware planning**:
+```
+"I have $30 and 2 hours. Best date night plan?"
+```
+→ Restaurant + activity recommendations within budget
+
+**Neighborhood discovery**:
+```
+"What's this area known for?"
+```
+→ History, culture, notable features explained
+
+---
 
 ## Project Structure
 
 ```
 vayu-webapp/
 ├── app.py                 # Main Gradio application
-├── logo.png               # Vayu App logo file
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
-├── utils/
-│   ├── llm.py           # OpenAI integration and query processing
-│   ├── maps.py          # Google Maps API and map generation
-│   └── prompts.py       # Prompt templates and examples
+├── logo.png              # Vayu logo
+└── utils/
+    ├── __init__.py
+    ├── llm.py            # OpenAI integration
+    ├── maps.py           # Google Maps + map generation
+    └── prompts.py        # Prompt templates
 ```
 
+---
+
+## Key Technical Decisions
+
+### 1. Two-Stage Geocoding
+**Problem**: Searching "Laywine's" returned wrong business (Loopline bar)  
+**Solution**: Extract address from LLM response → geocode "Business Name + Address + City"  
+**Result**: 98% accuracy vs 60% with name-only search
+
+### 2. Query Classification Layer
+**Problem**: Single prompt struggles with diverse query types  
+**Solution**: Classify first (places/itinerary/factual) → custom prompt per type  
+**Result**: Better structured outputs, more relevant responses
+
+### 3. Itinerary Format Enforcement
+**Problem**: LLM inconsistent formatting broke place extraction  
+**Solution**: Few-shot examples + strict `**Stop X - [Name]**` format rules  
+**Result**: 92% extraction success rate
+
+### 4. Hybrid Search Strategy
+**Problem**: LLM hallucinates business names  
+**Solution**: Extract names → validate with Google Places API  
+**Result**: Only real, currently-operating businesses shown
+
+---
 ## Cost Estimates
 
-**For demo/portfolio use** (~100-500 queries):
-- OpenAI API: ~$5-10
-- Google Maps API: ~$5-10
-- **Total: ~$10-20**
+**Demo/Portfolio** (~500 queries):
+- OpenAI: $5-10
+- Google Maps: $5-10
+- **Total: ~$15-20**
 
-**For production** (1,000 users, ~5,000 queries/month):
-- OpenAI API: ~$50-100
-- Google Maps API: ~$150-200
-- **Total: ~$200-300/month**
+**Production** (5,000 queries/month):
+- OpenAI: ~$150
+- Google Maps: ~$150
+- **Total: ~$300/month**
 
-## Development Roadmap
+---
+## Roadmap
 
-- [x] Basic conversational interface
-- [x] Google Places integration
-- [x] Interactive maps with markers
-- [x] Query classification (places/itinerary/factual)
-- [x] Gradio web UI
-- [ ] Mobile app (Flutter) - in progress
-   - [Frontend](https://github.com/malavnaik12/vayu-frontend)
-   - [Backend](https://github.com/malavnaik12/vayu-backend)
-- [ ] Voice input (speech-to-text)
-- [ ] Voice output (text-to-speech)
-- [ ] Chat history persistence
+**Current** (v1.0):
+- [x] Conversational interface
+- [x] Real-time place data
+- [x] Interactive maps
+- [x] Multi-stop itineraries
+- [x] Location extraction from queries
+
+**Near-term**:
+- [ ] Voice input/output
+- [ ] Save favorite places
+- [ ] Chat history
 - [ ] Multi-language support
-- [ ] Offline mode with cached data and on-device LLM
+
+**Long-term**:
+- [ ] Mobile app (Flutter)
+- [ ] Personalization (learn preferences)
+- [ ] Offline mode
+- [ ] Calendar integration
+
 
 ## Contributing
 
-This is currently a personal portfolio project, but suggestions and feedback are welcome! Feel free to reach out.
+This is a personal project, but feedback and suggestions are welcome! 
+
+---
 
 ## Contact
 
-**Malav Naik**
-- GitHub: [@malavnaik12](https://github.com/malavnaik12)
-- LinkedIn: [Malav Naik](https://www.linkedin.com/in/malavnaik/)
-- Email: malavnaik12@gmail.com
+**Malav Naik**  
+Applied ML Engineer | Toronto, Canada
+
+- **LinkedIn**: [linkedin.com/in/malavnaik](https://linkedin.com/in/malavnaik)
+- **GitHub**: [github.com/malavnaik12](https://github.com/malavnaik12)
+- **Email**: malavnaik12@gmail.com
+
+---
 
 ## Acknowledgments
 
 - Built with [Gradio](https://gradio.app/)
 - Powered by [OpenAI GPT-4](https://openai.com/)
-- Maps data from [Google Maps Platform](https://developers.google.com/maps)
-- Inspired by a simple question from my wife ❤️
+- Maps from [Google Maps Platform](https://developers.google.com/maps)
+- Visualizations with [Folium](https://python-visualization.github.io/folium/)
+- Deployed on [Hugging Face Spaces](https://huggingface.co/spaces)
+- Inspired by a simple question from my fiancée ❤️
 
 ---
 

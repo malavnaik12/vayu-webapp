@@ -263,11 +263,11 @@ with gr.Blocks() as demo:  # Remove theme and css here
             """
         Ever arrive somewhere new and wonder "What's this area even called?" or "Where should I eat?" 
 
-        I built Vayu after getting lost in a Toronto neighborhood with my fiancé. We wanted to know about the area we were driving through, but piecing together info from Google Maps, Wikipedia, and reviews felt impossible while navigating traffic.
+        I built Vayu after getting lost in a Toronto neighborhood with my wife. We wanted to know about the area we were driving through, but piecing together info from Google Maps, Wikipedia, and Reviews felt impossible while navigating traffic.
 
         Now you can just ask: "What's this neighborhood known for?" or "I want some quick tacos nearby, where should I go?" — and get real recommendations with a map to match.
 
-        No more juggling between Google Maps, Reviews, ChatGPT, and other apps. 
+        No more juggling between Google Maps, Wikipedia, Reviews, ChatGPT, and other apps. 
         
         Just ask Vayu. 
 

@@ -179,13 +179,15 @@ vayu-webapp/
 - [x] Location extraction from queries
 
 **Near-term**:
+- [ ] Mobile app (Flutter)
+  - [Frontend](https://github.com/malavnaik12/vayu-frontend)
+  - [Backend](https://github.com/malavnaik12/vayu-backend)
 - [ ] Voice input/output
 - [ ] Save favorite places
 - [ ] Chat history
-- [ ] Multi-language support
 
 **Long-term**:
-- [ ] Mobile app (Flutter)
+- [ ] Multi-language support
 - [ ] Personalization (learn preferences)
 - [ ] Offline mode
 - [ ] Calendar integration
